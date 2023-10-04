@@ -1,0 +1,131 @@
+---
+- name: Configure Floating IP
+  hosts: workers
+  become: yes  # This ensures that Ansible runs the commands with elevated privileges (e.g., sudo)
+  tasks:
+    - name: Fetch the dynamic IP address of the worker node
+      set_fact:
+        worker_node_ip: "{{ ansible_default_ipv4.address }}"
+      delegate_to: localhost  # Run this task on the Ansible control node
+
+    - name: Create Directory
+      file:
+        path: /etc/network/interfaces.d
+        state: directory
+        mode: '0755'
+
+    - name: Create the /etc/network/interfaces.d/60-floating-ip.cfg file
+      copy:
+        dest: "/etc/network/interfaces.d/60-floating-ip.cfg"
+        content: |
+          auto eth0:1
+          iface eth0:1 inet static
+              address {{ worker_node_ip }}
+              netmask 32
+
+    - name: Restart networking service
+      service:
+        name: systemd-networkd.service
+        state: restarted
+
+- hosts: master.dealercy.net
+  become: yes
+  tasks:
+    - name: Install nfs packages
+      apt:
+        name: "{{ packages }}"
+        state: present
+        update_cache: yes
+      vars:
+        packages:
+        - nfs-kernel-server
+
+    - name: Create a mountable directory if it does not exist
+      file:
+        path: /var/kubernetes
+        state: directory
+        owner: root
+        group: root
+        mode: '0775'
+
+    - name: enable rpcbind nfslock nfs
+      service:
+        name: "{{ item }}"
+        enabled: yes
+      with_items:
+        - rpcbind
+
+    - name: Copy exports file.
+      template:
+        src: ../exports/exports.j2
+        dest: /etc/exports
+        owner: root
+        group: root
+        mode: 0644
+    - name: NFS apply change configrue
+      shell: systemctl reload nfs;exportfs -a
+
+- hosts: workers
+  become: yes
+  tasks:
+    - name: Install nfs packages
+      apt:
+        name: "{{ packages }}"
+        state: present
+        update_cache: yes
+      vars:
+        packages:
+        - nfs-kernel-server
+
+    - name: Create a mountable directory if it does not exist
+      file:
+        path: /var/kubernetes
+        state: directory
+        owner: root
+        group: root
+        mode: '0775'
+    - name: Mount volumn
+      shell: sudo mount {{ hostvars['master.dealercy.net'].ansible_host }}:/var/kubernetes /var/kubernetes
+
+- hosts: all
+  tasks:
+    - name: Install kube-dependencies task
+      ansible.builtin.import_tasks:
+        file: ../kube-dependencies.yaml
+
+- hosts: master
+  become: yes
+  tasks:
+    - name: install Kubectl
+      apt:
+        name: kubectl=1.26.*
+        state: present
+        force: yes # allow downgrades
+
+- hosts: master.dealercy.net
+  become: yes
+  tasks:
+    - name: Setup Kubernetes Master node
+      ansible.builtin.import_tasks:
+        file: ../master.yaml
+
+- hosts: master.dealercy.net
+  become: yes
+  tasks:
+    - name: get join command
+      shell: kubeadm token create --print-join-command
+      register: join_command_raw
+
+    - name: set join command as a host variable
+      set_fact:
+        join_command: "{{ join_command_raw.stdout_lines[0] }}"
+      delegate_to: localhost
+
+- hosts: workers
+  become: yes
+  tasks:
+    - name: TCP port 6443 on master is reachable from worker
+      wait_for: "host={{ hostvars['master.dealercy.net'].ansible_host }} port=6443 timeout=1"
+
+    - name: join cluster
+      shell: "{{ hostvars['master.dealercy.net'].join_command }}"
