@@ -1,0 +1,5 @@
+terraform/.*
+terraform/config.tfvars
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+ansible/inventories/prod/hosts.yaml
