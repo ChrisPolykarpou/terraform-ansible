@@ -28,93 +28,35 @@
         name: systemd-networkd.service
         state: restarted
 
-- hosts: master.dealercy.net
-  become: yes
-  tasks:
-    - name: Install nfs packages
-      apt:
-        name: "{{ packages }}"
-        state: present
-        update_cache: yes
-      vars:
-        packages:
-        - nfs-kernel-server
-
-    - name: Create a mountable directory if it does not exist
-      file:
-        path: /var/kubernetes
-        state: directory
-        owner: root
-        group: root
-        mode: '0775'
-
-    - name: enable rpcbind nfslock nfs
-      service:
-        name: "{{ item }}"
-        enabled: yes
-      with_items:
-        - rpcbind
-
-    - name: Copy exports file.
-      template:
-        src: ../exports/exports.j2
-        dest: /etc/exports
-        owner: root
-        group: root
-        mode: 0644
-    - name: NFS apply change configrue
-      shell: systemctl reload nfs;exportfs -a
-
-- hosts: workers
-  become: yes
-  tasks:
-    - name: Install nfs packages
-      apt:
-        name: "{{ packages }}"
-        state: present
-        update_cache: yes
-      vars:
-        packages:
-        - nfs-kernel-server
-
-    - name: Create a mountable directory if it does not exist
-      file:
-        path: /var/kubernetes
-        state: directory
-        owner: root
-        group: root
-        mode: '0775'
-    - name: Mount volumn
-      shell: sudo mount {{ hostvars['master.dealercy.net'].ansible_host }}:/var/kubernetes /var/kubernetes
-
 - hosts: all
   tasks:
     - name: Install kube-dependencies task
       ansible.builtin.import_tasks:
-        file: ../kube-dependencies.yaml
+        file: kube-dependencies.yaml
 
 - hosts: master
   become: yes
   tasks:
     - name: install Kubectl
       apt:
-        name: kubectl=1.26.*
+        name: kubectl=1.29.*
         state: present
         force: yes # allow downgrades
 
-- hosts: master.dealercy.net
+- hosts: master.dealer.com.cy
   become: yes
   tasks:
     - name: Setup Kubernetes Master node
       ansible.builtin.import_tasks:
-        file: ../master.yaml
+        file: master.yaml
 
-- hosts: master.dealercy.net
+- hosts: all
   become: yes
   tasks:
     - name: get join command
       shell: kubeadm token create --print-join-command
       register: join_command_raw
+      delegate_to: master.dealer.com.cy
 
     - name: set join command as a host variable
       set_fact:
@@ -125,7 +67,7 @@
   become: yes
   tasks:
     - name: TCP port 6443 on master is reachable from worker
-      wait_for: "host={{ hostvars['master.dealercy.net'].ansible_host }} port=6443 timeout=1"
+      wait_for: "host={{ hostvars['master.dealer.com.cy'].ansible_host }} port=6443 timeout=1"
 
     - name: join cluster
-      shell: "{{ hostvars['master.dealercy.net'].join_command }}"
+      shell: "{{ join_command }}"
