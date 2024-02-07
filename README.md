@@ -1,6 +1,8 @@
 # Infrastructure Pipelines
 A way of using terraform and ansible together in a fully automated IaC way using Github-Actions. This allows scaling up and down, building and destroying Kubernetes Clusters /
 
+I am using Hetzner Cloud but you can switch to any provider you like by modifying the terraform code. Another possibility is writing terraform code for different cloud-providers in order to remain as cloud-agnostic as possible /
+
 [Tfstate](https://developer.hashicorp.com/terraform/language/state) file for each environment is stored in self-hosted minio-s3 storage. 
 > It is recommended to use a [lock](https://developer.hashicorp.com/terraform/language/state/locking) for your state!
 
