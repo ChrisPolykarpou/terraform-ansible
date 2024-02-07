@@ -1,6 +1,8 @@
 # Infrastructure Pipelines
-A way of using terraform and ansible together in a fully automated IaC way using Github-Actions. This allows scaling up and down, building and destroying Kubernetes Clusters
-[Tfstate](https://developer.hashicorp.com/terraform/language/state) file for each environment is stored in self-hosted minio-s3 storage. It is recommended to use a [lock](https://developer.hashicorp.com/terraform/language/state/locking) for your state!
+A way of using terraform and ansible together in a fully automated IaC way using Github-Actions. This allows scaling up and down, building and destroying Kubernetes Clusters /
+
+[Tfstate](https://developer.hashicorp.com/terraform/language/state) file for each environment is stored in self-hosted minio-s3 storage. 
+> It is recommended to use a [lock](https://developer.hashicorp.com/terraform/language/state/locking) for your state!
 
 ## Provision-infra.yml
 This pipeline builds an enviroment based on terraform configuration. The pipeline takes **enviroment** as an argument.
