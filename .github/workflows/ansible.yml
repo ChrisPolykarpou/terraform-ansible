@@ -45,4 +45,4 @@ jobs:
 
       - name: Run Ansible-scripts on targeted instances
         working-directory: ./ansible
-        run: ansible-playbook -i ../utils/ansible/ansible_target.yml site.yaml --check
+        run: ansible-playbook -i ../utils/ansible/ansible_target.yml site.yaml

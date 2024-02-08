@@ -6,6 +6,14 @@ I am using Hetzner Cloud but you can switch to any provider you like by modifyin
 [Tfstate](https://developer.hashicorp.com/terraform/language/state) file for each environment is stored in self-hosted minio-s3 storage. 
 > It is recommended to use a [lock](https://developer.hashicorp.com/terraform/language/state/locking) for your state!
 
+```
+# Required Github-Secrets
+HCLOUD_TOKEN
+MINIO_ACCESS_KEY
+MINIO_SECRET_KEY
+SSH_PRIVATE_KEY
+```
+
 ## Provision-infra.yml
 This pipeline builds an enviroment based on terraform configuration. The pipeline takes **enviroment** as an argument.
 
