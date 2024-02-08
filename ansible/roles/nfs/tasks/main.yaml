@@ -53,4 +53,4 @@
         group: root
         mode: '0775'
     - name: Mount volumn
-      shell: sudo mount {{ hostvars['master.dealer.com.cy'].ansible_host }}:/var/kubernetes /var/kubernetes
+      shell: sudo mount MASTER_NODE_IP:/var/kubernetes /var/kubernetes

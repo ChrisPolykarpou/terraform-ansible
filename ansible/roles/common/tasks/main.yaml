@@ -56,7 +56,7 @@
     - name: get join command
       shell: kubeadm token create --print-join-command
       register: join_command_raw
-      delegate_to: master.dealer.com.cy
+      delegate_to: root@MASTER_NODE_IP
 
     - name: set join command as a host variable
       set_fact:
@@ -67,7 +67,7 @@
   become: yes
   tasks:
     - name: TCP port 6443 on master is reachable from worker
-      wait_for: "host={{ hostvars['master.dealer.com.cy'].ansible_host }} port=6443 timeout=1"
+      wait_for: "host=MASTER_NODE_IP port=6443 timeout=1"
 
     - name: join cluster
       shell: "{{ join_command }}"
