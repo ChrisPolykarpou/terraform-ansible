@@ -6,7 +6,7 @@ variable "master_count" {
   default = 1
 }
 variable "worker_count" {
-  default = 0
+  default = 3
 }
 
 # Configure the Hetzner Cloud Provider
