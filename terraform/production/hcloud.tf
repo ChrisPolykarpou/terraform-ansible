@@ -22,8 +22,8 @@ resource "hcloud_ssh_key" "default" {
 
 # Create network
 resource "hcloud_network" "privNet" {
-  name     = "my-net"
-  ip_range = "10.98.0.0/16"
+  name     = "production-net"
+  ip_range = "10.98.0.0/20"
   labels = {
     "enviroment" : "production"
   }
@@ -32,7 +32,7 @@ resource "hcloud_network_subnet" "kubernetes" {
   network_id   = hcloud_network.privNet.id
   type         = "server"
   network_zone = "eu-central"
-  ip_range     = "10.98.0.0/16"
+  ip_range     = "10.98.0.0/20"
 }
 
 # Create master node
@@ -45,7 +45,7 @@ resource "hcloud_server" "master" {
     "ansible-target" : "true"
   }
   server_type = "cpx21"
-  ssh_keys = [hcloud_ssh_key.default.id]
+  ssh_keys = [15344323]
   network {
     network_id = hcloud_network.privNet.id
   }
@@ -59,6 +59,7 @@ resource "hcloud_server" "master" {
   ]
 
   lifecycle {
+    prevent_destroy = true
     ignore_changes = [
       labels
     ]
@@ -80,7 +81,7 @@ resource "hcloud_server" "worker" {
   network {
     network_id = hcloud_network.privNet.id
   }
-   # **Note**: the depends_on is important when directly attaching the
+  # **Note**: the depends_on is important when directly attaching the
   # server to a network. Otherwise Terraform will attempt to create
   # server and sub-network in parallel. This may result in the server
   # creation failing randomly.
@@ -93,4 +94,46 @@ resource "hcloud_server" "worker" {
       labels
     ]
   }
+}
+
+# Load-balancer
+resource "hcloud_load_balancer" "load_balancer" {
+  name               = "dealerlb"
+  load_balancer_type = "lb11"
+  location           = "hel1"
+  delete_protection  = "true"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+resource "hcloud_load_balancer_network" "srvnetwork" {
+  load_balancer_id = hcloud_load_balancer.load_balancer.id
+  network_id       = hcloud_network.privNet.id
+}
+resource "hcloud_load_balancer_service" "lb_service" {
+  load_balancer_id = hcloud_load_balancer.load_balancer.id
+  protocol         = "tcp"
+  listen_port      = "80"
+  destination_port = "32080"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+resource "hcloud_load_balancer_service" "lb_service2" {
+  load_balancer_id = hcloud_load_balancer.load_balancer.id
+  protocol         = "tcp"
+  listen_port      = "443"
+  destination_port = "32443"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+resource "hcloud_load_balancer_target" "load_balancer_target_worker" {
+  count            = var.worker_count
+  type             = "server"
+  load_balancer_id = hcloud_load_balancer.load_balancer.id
+  server_id        = hcloud_server.worker[count.index].id
 }

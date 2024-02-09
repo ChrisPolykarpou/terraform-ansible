@@ -93,3 +93,32 @@ resource "hcloud_server" "worker" {
     ]
   }
 }
+
+# Load-balancer
+resource "hcloud_load_balancer" "load_balancer" {
+  name               = "staging-dealerlb"
+  load_balancer_type = "lb11"
+  location           = "hel1"
+}
+resource "hcloud_load_balancer_network" "srvnetwork" {
+  load_balancer_id = hcloud_load_balancer.load_balancer.id
+  network_id       = hcloud_network.privNet-staging.id
+}
+resource "hcloud_load_balancer_service" "lb_service" {
+  load_balancer_id = hcloud_load_balancer.load_balancer.id
+  protocol         = "tcp"
+  listen_port      = "80"
+  destination_port = "32080"
+}
+resource "hcloud_load_balancer_service" "lb_service2" {
+  load_balancer_id = hcloud_load_balancer.load_balancer.id
+  protocol         = "tcp"
+  listen_port      = "443"
+  destination_port = "32443"
+}
+resource "hcloud_load_balancer_target" "load_balancer_target_worker" {
+  count            = var.worker_count
+  type             = "server"
+  load_balancer_id = hcloud_load_balancer.load_balancer.id
+  server_id        = hcloud_server.worker[count.index].id
+}
