@@ -1,6 +1,8 @@
 # Infrastructure Pipelines
 A way of using terraform and ansible together in a fully automated IaC way using Github-Actions. This allows scaling up and down, building and destroying Kubernetes Clusters 
 
+> For HA cluster you need at least 3 __stacked control-plane__ **or** decoupled __external etcd + control-plane nodes__. Thus a load-balancer is needed to expose the Kube-apiserver. At the moment this is not supported in an automated way! 
+
 I am using Hetzner Cloud but you can switch to any provider you like by modifying the terraform code. Another possibility is writing terraform code for different cloud-providers in order to remain as cloud-agnostic as possible 
 
 [Tfstate](https://developer.hashicorp.com/terraform/language/state) file for each environment is stored in self-hosted minio-s3 storage. 

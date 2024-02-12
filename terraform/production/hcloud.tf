@@ -2,6 +2,9 @@ variable "hcloud_token" {}
 variable "ssh_key" {}
 
 # master_count should be an odd number!
+# For HA cluster you need at least 3 stacked control-plane or decoupled external etcd and control-plane nodes.
+# Thus a load-balancer is needed to expose the Kube-apiserver. 
+# AT THE MOMENT THIS IS NOT SUPPORTED! 
 variable "master_count" {
   default = 1
 }
