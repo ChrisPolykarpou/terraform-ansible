@@ -4,12 +4,12 @@ variable "ssh_key" {}
 # master_count should be an odd number!
 # For HA cluster you need at least 3 stacked control-plane or decoupled external etcd and control-plane nodes.
 # Thus a load-balancer is needed to expose the Kube-apiserver. 
-# AT THE MOMENT THIS IS NOT SUPPORTED! 
+# Currently only stacked control-plane nodes are supported!
 variable "master_count" {
-  default = 1
+  default = 3
 }
 variable "worker_count" {
-  default = 3
+  default = 5
 }
 
 # Configure the Hetzner Cloud Provider
@@ -113,6 +113,16 @@ resource "hcloud_load_balancer" "load_balancer" {
 resource "hcloud_load_balancer_network" "srvnetwork" {
   load_balancer_id = hcloud_load_balancer.load_balancer.id
   network_id       = hcloud_network.privNet.id
+}
+resource "hcloud_load_balancer_service" "lb_kubeAPI_server" {
+  load_balancer_id = hcloud_load_balancer.load_balancer.id
+  protocol         = "tcp"
+  listen_port      = "6443"
+  destination_port = "6443"
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 resource "hcloud_load_balancer_service" "lb_service" {
   load_balancer_id = hcloud_load_balancer.load_balancer.id
