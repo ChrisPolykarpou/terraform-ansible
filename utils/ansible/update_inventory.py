@@ -1,21 +1,24 @@
 # Python code to extract terraform ip addresses and tags to ansible inventory
 # First the tfstate file is fetched from our s3 bucket
-# Then hosts.yml is generated
+# Then hosts.yml and ansible_target.yml files are generated
 
 import json
 import yaml
 from minio import Minio
-import os
+import copy
 import sys
 
 environment = sys.argv[1]
 minioID = sys.argv[2]
 minioSecret = sys.argv[3]
+
 inventoryFile="hosts.yml"
 ansibleTargetFile="ansible_target.yml"
+minioEndpoint="cdn.dealer.com.cy"
+domain="dealer.com.cy"
 
 # Create client with access and secret key.
-client = Minio("cdn.dealer.com.cy", minioID, minioSecret)
+client = Minio(minioEndpoint, minioID, minioSecret)
 # Specify the bucket name and object name
 bucket_name = "terraform"
 object_name = environment+"/terraform.tfstate"
@@ -53,36 +56,43 @@ for resource in data.get('resources', []):
                 else:
                     ansible_limit_hostnames.append(0)
 
-# Prepare structure for Ansible's hosts.yml inventory
+# Prepare structure for Ansible's inventory
 data = {
     'all': {
-        'hosts': {}
-        ,
         'children': {
+            'masters':{
+                'hosts': {}
+            },
             'workers': {
                 'hosts': {}
             }
         }
     }
 }
+ansible_targetted_data = copy.deepcopy(data)
 
-# GENERATE generic hosts.yml file
 # Add master and worker nodes to inventory file
 count_master=1
 count_worker=1
 for i, ip_address in enumerate(ipv4_addresses):
     # Master nodes
     if(ipv4_address_names[i] == 'master'):
-        hostname = f'master-{count_master}.dealer.com.cy'
+        hostname = f'master-{count_master}.{domain}'
         count_master+=1
         host_data = {
             'ansible_user': 'root',
             'ansible_host': ip_address
         }
-        data['all']['hosts'][hostname] = host_data
+        data['all']['children']['masters']['hosts'][hostname] = host_data
+        
+        # If node is ansible-target
+        if ansible_limit_hostnames[i]==1:
+            print("IN")
+            ansible_targetted_data['all']['children']['masters']['hosts'][hostname] = host_data
+    
     # Worker nodes
     if(ipv4_address_names[i] == 'worker'):
-        hostname = f'worker-{count_worker}.dealer.com.cy'
+        hostname = f'worker-{count_worker}.{domain}'
         count_worker+=1
         host_data = {
             'ansible_user': 'root',
@@ -90,52 +100,17 @@ for i, ip_address in enumerate(ipv4_addresses):
         }
         data['all']['children']['workers']['hosts'][hostname] = host_data
 
+        # If node is ansible-target
+        if ansible_limit_hostnames[i]==1:
+            print("IN")
+            ansible_targetted_data['all']['children']['masters']['hosts'][hostname] = host_data
+
 # Generate hosts.yml inventory file
 with open(inventoryFile, 'w') as yaml_file:
     yaml.dump(data, yaml_file)
-
-data = {
-    'all': {
-        'hosts': {}
-        ,
-        'children': {
-            'workers': {
-                'hosts': {}
-            }
-        }
-    }
-}
-# GENERATE ansible-targeted ansible-target.yml file
-# Add master and worker nodes to inventory file
-count_master=1
-count_worker=1
-for i, ip_address in enumerate(ipv4_addresses):
-    if ansible_limit_hostnames[i]==1:
-        # Master nodes
-        if(ipv4_address_names[i] == 'master'):
-            hostname = f'master-{count_master}.dealer.com.cy'
-            count_master+=1
-            host_data = {
-                'ansible_user': 'root',
-                'ansible_host': ip_address
-            }
-            data['all']['hosts'][hostname] = host_data
-        # Worker nodes
-        if(ipv4_address_names[i] == 'worker'):
-            hostname = f'worker-{count_worker}.dealer.com.cy'
-            count_worker+=1
-            host_data = {
-                'ansible_user': 'root',
-                'ansible_host': ip_address
-            }
-            data['all']['children']['workers']['hosts'][hostname] = host_data
-
 # Generate ansible-target.yml inventory file
 with open(ansibleTargetFile, 'w') as yaml_file:
-    yaml.dump(data, yaml_file)
+    yaml.dump(ansible_targetted_data, yaml_file)
 
-# Upload hosts file to Minio S3
+# Upload hosts.yml file to Minio S3
 client.fput_object(bucket_name, environment+"/"+inventoryFile, inventoryFile)
-
-
-
