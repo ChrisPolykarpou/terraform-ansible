@@ -6,8 +6,6 @@ I am using Hetzner Cloud but you can switch to any provider you like by modifyin
 [Tfstate](https://developer.hashicorp.com/terraform/language/state) file for each environment is stored in self-hosted minio-s3 storage. 
 > It is recommended to use a [lock](https://developer.hashicorp.com/terraform/language/state/locking) for your state!
 
-For HA cluster you need at least 3 __stacked control-plane__ **or** decoupled __external etcd + control-plane nodes__. Thus a load-balancer is needed to expose the Kube-apiserver. At the moment this is not supported in an automated way! 
-
 ```
 # Required Github-Secrets
 HCLOUD_TOKEN
@@ -15,6 +13,7 @@ MINIO_ACCESS_KEY
 MINIO_SECRET_KEY
 SSH_PRIVATE_KEY
 ```
+For [HA-cluster](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/ha-topology) you need at least 3 __stacked control-plane__ **or** decoupled __external etcd + control-plane nodes__. Thus a load-balancer is needed to expose the Kube-apiserver. At the moment this is not supported in an automated way! 
 
 ## Provision-infra.yml
 This pipeline builds an enviroment based on terraform configuration. The pipeline takes __**Enviroment**__ as an argument.
