@@ -1,4 +1,4 @@
-name: Configure Kubernetes nodes
+name: Configure Kubernetes Cluster
 
 on:
   workflow_dispatch:  # Manually trigger the workflow
