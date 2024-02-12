@@ -1,4 +1,4 @@
-- hosts: master.dealer.com.cy
+- hosts: masters
   tasks:
     - name: Install nfs packages
       apt:

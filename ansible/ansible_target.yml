@@ -1,0 +1,6 @@
+all:
+  children:
+    masters:
+      hosts: {}
+    workers:
+      hosts: {}

@@ -34,7 +34,7 @@
       ansible.builtin.import_tasks:
         file: kube-dependencies.yaml
 
-- hosts: master
+- hosts: masters
   become: yes
   tasks:
     - name: install Kubectl
@@ -43,7 +43,7 @@
         state: present
         force: yes # allow downgrades
 
-- hosts: master.dealer.com.cy
+- hosts: masters
   become: yes
   tasks:
     - name: Setup Kubernetes Master node
