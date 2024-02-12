@@ -87,7 +87,6 @@ for i, ip_address in enumerate(ipv4_addresses):
         
         # If node is ansible-target
         if ansible_limit_hostnames[i]==1:
-            print("IN")
             ansible_targetted_data['all']['children']['masters']['hosts'][hostname] = host_data
     
     # Worker nodes
@@ -102,8 +101,7 @@ for i, ip_address in enumerate(ipv4_addresses):
 
         # If node is ansible-target
         if ansible_limit_hostnames[i]==1:
-            print("IN")
-            ansible_targetted_data['all']['children']['masters']['hosts'][hostname] = host_data
+            ansible_targetted_data['all']['children']['workers']['hosts'][hostname] = host_data
 
 # Generate hosts.yml inventory file
 with open(inventoryFile, 'w') as yaml_file:
@@ -114,3 +112,6 @@ with open(ansibleTargetFile, 'w') as yaml_file:
 
 # Upload hosts.yml file to Minio S3
 client.fput_object(bucket_name, environment+"/"+inventoryFile, inventoryFile)
+
+
+
