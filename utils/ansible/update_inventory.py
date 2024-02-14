@@ -12,13 +12,17 @@ environment = sys.argv[1]
 minioID = sys.argv[2]
 minioSecret = sys.argv[3]
 
-inventoryFile="hosts.yml"
-ansibleTargetFile="ansible_target.yml"
-minioEndpoint="cdn.dealer.com.cy"
-domain="dealer.com.cy"
+INVENTORY_FILENAME="hosts.yml"                  
+ANSIBLE_TARGET_FILENAME="ansible_target.yml"
+MINIO_ENDPOINT="cdn.dealer.com.cy"          # Used to retrieve tfstate
+DOMAIN="dealer.com.cy"                      # Used to name hosts for inventoryFile
+# Tfstate resource variables
+MASTER_NODE_NAME="master"   # Master servers of your TF resource
+WORKER_NODE_NAME="worker"   # Worker servers of your tf resource
+KUBEAPI_LB="KubeAPI-lb"  # KubeAPI load balancer name resource
 
 # Create client with access and secret key.
-client = Minio(minioEndpoint, minioID, minioSecret)
+client = Minio(MINIO_ENDPOINT, minioID, minioSecret)
 # Specify the bucket name and object name
 bucket_name = "terraform"
 object_name = environment+"/terraform.tfstate"
@@ -55,6 +59,12 @@ for resource in data.get('resources', []):
                     ansible_limit_hostnames.append(1)
                 else:
                     ansible_limit_hostnames.append(0)
+        # Get kubeAPI load-balancer's ip address
+        if(resource.get('name') == KUBEAPI_LB):
+            ipv4_addresses.append(attributes.get('ipv4'))
+            ipv4_address_names.append(resource.get('name'))
+            ansible_limit_hostnames.append(0)
+
 
 # Prepare structure for Ansible's inventory
 data = {
@@ -76,8 +86,11 @@ count_master=1
 count_worker=1
 for i, ip_address in enumerate(ipv4_addresses):
     # Master nodes
-    if(ipv4_address_names[i] == 'master'):
-        hostname = f'master-{count_master}.{domain}'
+    if(ipv4_address_names[i] == MASTER_NODE_NAME):
+        if(count_master==1):
+            hostname = "master-node"
+        else:
+            hostname = f'{MASTER_NODE_NAME}-{count_master}.{DOMAIN}'
         count_master+=1
         host_data = {
             'ansible_user': 'root',
@@ -90,8 +103,8 @@ for i, ip_address in enumerate(ipv4_addresses):
             ansible_targetted_data['all']['children']['masters']['hosts'][hostname] = host_data
     
     # Worker nodes
-    if(ipv4_address_names[i] == 'worker'):
-        hostname = f'worker-{count_worker}.{domain}'
+    if(ipv4_address_names[i] == WORKER_NODE_NAME):
+        hostname = f'{WORKER_NODE_NAME}-{count_worker}.{DOMAIN}'
         count_worker+=1
         host_data = {
             'ansible_user': 'root',
@@ -103,15 +116,23 @@ for i, ip_address in enumerate(ipv4_addresses):
         if ansible_limit_hostnames[i]==1:
             ansible_targetted_data['all']['children']['workers']['hosts'][hostname] = host_data
 
+    # Add kubeAPI LoadBalancer to variables
+    if(ipv4_address_names[i] == KUBEAPI_LB):   
+        host_data = {
+            'KubeAPI-lb': ip_address
+        }    
+        data['all']['vars'] = host_data
+        ansible_targetted_data['all']['vars'] = host_data
+
 # Generate hosts.yml inventory file
-with open(inventoryFile, 'w') as yaml_file:
+with open(INVENTORY_FILENAME, 'w') as yaml_file:
     yaml.dump(data, yaml_file)
 # Generate ansible-target.yml inventory file
-with open(ansibleTargetFile, 'w') as yaml_file:
+with open(ANSIBLE_TARGET_FILENAME, 'w') as yaml_file:
     yaml.dump(ansible_targetted_data, yaml_file)
 
 # Upload hosts.yml file to Minio S3
-client.fput_object(bucket_name, environment+"/"+inventoryFile, inventoryFile)
+client.fput_object(bucket_name, environment+"/"+INVENTORY_FILENAME, INVENTORY_FILENAME)
 
 
 

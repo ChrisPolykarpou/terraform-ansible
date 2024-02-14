@@ -9,7 +9,7 @@ terraform {
   # Configure terraform to use s3 minio
   backend "s3" {
     bucket = "terraform"
-    key = "production/terraform.tfstate"
+    key = "staging/terraform.tfstate"
     endpoints = {
         s3 = "https://cdn.dealer.com.cy"   # Minio endpoint
     }

@@ -37,37 +37,71 @@
 - hosts: masters
   become: yes
   tasks:
-    - name: install Kubectl
-      apt:
-        name: kubectl=1.29.*
+    - name: Install apt-transport-https
+      package:
+        name: apt-transport-https
         state: present
-        force: yes # allow downgrades
 
-- hosts: masters
+    - name: Add Kubernetes apt repository key
+      apt_key:
+        url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+        state: present
+
+    - name: Add Kubernetes apt repository
+      apt_repository:
+        repo: deb https://apt.kubernetes.io/ kubernetes-xenial main
+        state: present
+
+    - name: Install kubectl
+      package:
+        name: kubectl
+        state: present
+
+# Initial Control-Plane Init
+- hosts: master-node
   become: yes
   tasks:
-    - name: Setup Kubernetes Master node
+    - name: Setup initial Kubernetes Control-Plane node
       ansible.builtin.import_tasks:
         file: master.yaml
 
-- hosts: all
+# Additional Control-Plane nodes joining the cluster
+- hosts: masters:!master-node
   become: yes
   tasks:
-    - name: get join command
-      shell: kubeadm token create --print-join-command
-      register: join_command_raw
+    - name: get join command for control-plane nodes
+      shell: echo $(kubeadm token create --ttl 20m --print-join-command) --control-plane --certificate-key $(kubeadm init phase upload-certs --upload-certs | grep -vw -e certificate -e Namespace)
+      register: join_command_raw_masters
       delegate_to: root@MASTER_NODE_IP
 
-    - name: set join command as a host variable
+    - name: set join command as a host variable for masters
       set_fact:
-        join_command: "{{ join_command_raw.stdout_lines[0] }}"
+        join_command_masters: "{{ join_command_raw_masters.stdout_lines[0] }}"
       delegate_to: localhost
 
-- hosts: workers
-  become: yes
-  tasks:
     - name: TCP port 6443 on master is reachable from worker
       wait_for: "host=MASTER_NODE_IP port=6443 timeout=1"
 
     - name: join cluster
-      shell: "{{ join_command }}"
+      shell: "{{ join_command_masters }}"
+
+# Worker nodes joining the Cluster
+- hosts: workers
+  become: yes
+  tasks:
+    - name: get join command for workers
+      shell: kubeadm token create --ttl 10m --print-join-command 
+      register: join_command_raw_workers
+      delegate_to: root@MASTER_NODE_IP
+
+    - name: set join command as a host variable for workers
+      set_fact:
+        join_command_workers: "{{ join_command_raw_workers.stdout_lines[0] }}"
+      delegate_to: localhost
+
+    - name: TCP port 6443 on master is reachable from worker
+      wait_for: "host=MASTER_NODE_IP port=6443 timeout=1"
+
+    - name: join cluster
+      shell: "{{ join_command_workers }}"
+    

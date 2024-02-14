@@ -1,4 +1,4 @@
-- hosts: masters
+- hosts: master-node
   tasks:
     - name: Install nfs packages
       apt:

@@ -43,11 +43,12 @@ jobs:
           echo "$PRIVATE_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
 
-      - name: Configure Ansible masterIP
+      - name: Share Ansible master-node IP for tasks
         working-directory: ./ansible
         run: |
-          master_ip=$(awk '/master-1.dealer.com.cy/{getline; print $2}' ../utils/ansible/hosts.yml)
+          master_ip=$(awk '/master-node/{getline; print $2}' ../utils/ansible/hosts.yml)
           sed -i "s/MASTER_NODE_IP/$master_ip/g" roles/common/tasks/main.yaml
+          sed -i "s/MASTER_NODE_IP/$master_ip/g" roles/common/tasks/master.yaml
           sed -i "s/MASTER_NODE_IP/$master_ip/g" roles/nfs/tasks/main.yaml
 
       - name: Run Ansible-scripts on targeted instances
@@ -97,7 +98,8 @@ jobs:
         env:
           HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
         run: |
-          cat > variables.tfvars <<EOF
+          cat >> variables.tfvars <<EOF
+          
           hcloud_token = "${{ secrets.HCLOUD_TOKEN }}"
           ssh_key = "${{ secrets.CHRIS_SSH_KEY }}"
           EOF

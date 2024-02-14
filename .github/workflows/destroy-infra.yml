@@ -9,7 +9,7 @@ on:
         default: 'staging'
 
 jobs:
-  Provision-Infrastructure:
+  Destroy-Infrastructure:
     runs-on: ubuntu-latest
 
     steps:          
@@ -42,7 +42,8 @@ jobs:
       - name: Terraform Plan Destroy
         working-directory: ./terraform/${{ github.event.inputs.enviroment }}
         run: |
-          cat > variables.tfvars <<EOF
+          cat >> variables.tfvars <<EOF
+
           hcloud_token = "${{ secrets.HCLOUD_TOKEN }}"
           ssh_key = "${{ secrets.CHRIS_SSH_KEY }}"
           EOF

@@ -27,7 +27,7 @@
           - pods
 
 - name: initialize the cluster (this could take some time)
-  command: kubeadm init --control-plane-endpoint "{{ hostvars[inventory_hostname]['ansible_host'] }}" --pod-network-cidr="10.244.0.0/16" --ignore-preflight-errors=NumCPU --ignore-preflight-errors=Mem
+  command: kubeadm init --control-plane-endpoint "{{ hostvars[inventory_hostname]['KubeAPI-lb'] | default(MASTER_NODE_IP, true) }}" --pod-network-cidr="10.244.0.0/16" --upload-certs
 
 - name: create .kube directory
   become: yes
@@ -48,7 +48,7 @@
   become_user: root
   shell: export KUBECONFIG=/etc/kubernetes/admin.conf
   
-- name: install Pod network
+- name: install Kube-Flannel CNI
   become: yes
   become_user: root
   shell: kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml
