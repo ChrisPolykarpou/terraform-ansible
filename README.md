@@ -27,7 +27,7 @@ DOMAIN="dealer.com.cy"                      # Used to name hosts for inventoryFi
 # Tfstate resource variables
 MASTER_NODE_NAME="master"   # Master servers of your TF resource
 WORKER_NODE_NAME="worker"   # Worker servers of your tf resource
-KUBEAPI_LB="KubeAPI-lb"  # KubeAPI load balancer name resource
+KUBEAPI_LB="KubeAPI-lb"     # KubeAPI load balancer name resource
 ```
 
 ### Terraform's Backend
