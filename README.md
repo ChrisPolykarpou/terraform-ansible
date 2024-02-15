@@ -16,8 +16,9 @@ SSH_PRIVATE_KEY
 
 For [HA-cluster](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/ha-topology) you need at least 3 __stacked control-plane__ **or** decoupled __external etcd + control-plane nodes__. Thus a load-balancer is needed to expose the Kube-apiserver.
 
-**Additional variables in utils/ansible/update_inventory.py**
+### Additional variables in utils/ansible/update_inventory.py
 Terraform's resource variables should match the following tfstate variables!
+
 ```
 INVENTORY_FILENAME="hosts.yml"                  
 ANSIBLE_TARGET_FILENAME="ansible_target.yml"
@@ -29,7 +30,7 @@ WORKER_NODE_NAME="worker"   # Worker servers of your tf resource
 KUBEAPI_LB="KubeAPI-lb"  # KubeAPI load balancer name resource
 ```
 
-**Terraform's Backend**
+### Terraform's Backend
 Below you can see the configuration of Terraform's Backend. The file is located at terraform/ENVIROMENT/config.tf
 ```
 # Configure terraform to use s3 minio
