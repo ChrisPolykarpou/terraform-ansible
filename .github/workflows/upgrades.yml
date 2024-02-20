@@ -1,0 +1,62 @@
+name: Upgrade Kubernetes Cluster
+
+on:
+  workflow_dispatch:  # Manually trigger the workflow
+    inputs:
+      enviroment:
+        description: 'Choose enviroment from terraform/<enviroment>'
+        required: true
+        default: 'staging'
+      version:
+        description: 'Choose version x.y.z (major.minor.patch). Do not skip Minor updates'
+        required: true
+        default: '1.29.2'
+
+jobs:
+  Upgrade-nodes:
+    runs-on: ubuntu-latest
+
+    steps:          
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            python3 \
+            python3-pip \
+            curl \
+            unzip
+
+      - name: Install Ansible and Minio client
+        run: pip3 install ansible minio
+
+      - name: Verify installations
+        run: ansible --version mc --version
+
+      - name: Fetch Ansible's inventory file
+        working-directory: ./utils/ansible
+        run: python3 fetch_inventory.py ${{ github.event.inputs.enviroment }} ${{ secrets.MINIO_ACCESS_KEY }} ${{ secrets.MINIO_SECRET_KEY }}
+
+      - name: configure version
+        working-directory: ./ansible
+        run: |
+          major_minor_version=$(echo ${{ github.event.inputs.version }} | cut -d. -f1-2)
+          major_minor_patch_version=$(echo ${{ github.event.inputs.version }})
+          sed -i "s/__KUBERNETES_MAJOR_MINOR_VERSION__/$major_minor_version/g" roles/update_nodes/tasks/prepare_node.yaml
+          sed -i "s/__KUBERNETES_MAJOR_MINOR_PATCH_VERSION__/$major_minor_patch_version/g" roles/update_nodes/tasks/prepare_node.yaml
+          sed -i "s/__KUBERNETES_MAJOR_MINOR_PATCH_VERSION__/$major_minor_patch_version/g" roles/update_nodes/tasks/after_upgrade.yaml
+          sed -i "s/__KUBERNETES_MAJOR_MINOR_PATCH_VERSION__/$major_minor_patch_version/g" roles/update_nodes/tasks/main.yaml
+      
+      - name: Configure machine's SSH_KEY
+        env:
+          PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+      - name: Run Ansible script for updating nodes
+        working-directory: ./ansible
+        run: ansible-playbook -i ../utils/ansible/hosts.yml roles/update_nodes/tasks/main.yaml

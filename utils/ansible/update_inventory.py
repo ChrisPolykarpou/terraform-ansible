@@ -1,12 +1,13 @@
 # Python code to extract terraform ip addresses and tags to ansible inventory
 # First the tfstate file is fetched from our s3 bucket
-# Then hosts.yml and ansible_target.yml files are generated
+# Then hosts.yml and ansible_target.yml files are generated and stored in the bucket
 
 import json
 import yaml
 from minio import Minio
 import copy
 import sys
+import os
 
 environment = sys.argv[1]
 minioID = sys.argv[2]
@@ -133,6 +134,9 @@ with open(ANSIBLE_TARGET_FILENAME, 'w') as yaml_file:
 
 # Upload hosts.yml file to Minio S3
 client.fput_object(bucket_name, environment+"/"+INVENTORY_FILENAME, INVENTORY_FILENAME)
+# Upload ansible-target.yml inventory file
+client.fput_object(bucket_name, environment+"/"+ANSIBLE_TARGET_FILENAME, ANSIBLE_TARGET_FILENAME)
 
-
-
+# Clean up
+os.remove(INVENTORY_FILENAME)
+os.remove(ANSIBLE_TARGET_FILENAME)

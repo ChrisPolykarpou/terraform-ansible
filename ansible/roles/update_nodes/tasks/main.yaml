@@ -1,0 +1,78 @@
+- hosts: master-node
+  become: yes
+  tasks:
+    - name: Prepare Master Control-plane node
+      ansible.builtin.import_tasks:
+        file: prepare_node.yaml
+
+    - name: Drain node
+      ignore_errors: yes
+      shell: |
+        export KUBECONFIG=/etc/kubernetes/admin.conf
+        kubectl drain {{ ansible_nodename }} --ignore-daemonsets
+
+    - name: Upgrade node to v__KUBERNETES_MAJOR_MINOR_PATCH_VERSION__
+      shell: kubeadm upgrade apply v__KUBERNETES_MAJOR_MINOR_PATCH_VERSION__ -y
+
+    - name: after Upgrade
+      ansible.builtin.import_tasks:
+        file: after_upgrade.yaml
+
+    - name: Uncordon node
+      shell: |
+        export KUBECONFIG=/etc/kubernetes/admin.conf
+        kubectl uncordon {{ ansible_nodename }}
+
+- hosts: masters:!master-node
+  become: yes
+  serial: 1  # This limits the playbook to run on one host at a time
+  tasks:
+    - name: Prepare other Control-plane nodes
+      ansible.builtin.import_tasks:
+        file: prepare_node.yaml
+
+    - name: Drain node
+      ignore_errors: yes
+      shell: |
+        export KUBECONFIG=/etc/kubernetes/admin.conf
+        kubectl drain {{ ansible_nodename }} --ignore-daemonsets
+
+    - name: Upgrade node
+      shell: kubeadm upgrade node
+
+    - name: after Upgrade
+      ansible.builtin.import_tasks:
+        file: after_upgrade.yaml
+    
+    - name: Uncordon node
+      shell: |
+        export KUBECONFIG=/etc/kubernetes/admin.conf
+        kubectl uncordon {{ ansible_nodename }}
+
+- hosts: workers
+  become: yes
+  serial: 1  # This limits the playbook to run on one host at a time
+  tasks:
+    - name: Prepare Worker nodes
+      ansible.builtin.import_tasks:
+        file: prepare_node.yaml
+
+    - name: Drain node
+      ignore_errors: yes
+      delegate_to: master-node
+      shell: |
+        export KUBECONFIG=/etc/kubernetes/admin.conf
+        kubectl drain {{ ansible_nodename }} --ignore-daemonsets
+
+    - name: Upgrade node
+      shell: kubeadm upgrade node
+
+    - name: after Upgrade
+      ansible.builtin.import_tasks:
+        file: after_upgrade.yaml
+
+    - name: Uncordon node
+      delegate_to: master-node
+      shell: |
+        export KUBECONFIG=/etc/kubernetes/admin.conf
+        kubectl uncordon {{ ansible_nodename }}

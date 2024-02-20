@@ -52,3 +52,30 @@ jobs:
       - name: Destroying Enviroment!
         working-directory: ./terraform/${{ github.event.inputs.enviroment }}
         run: terraform apply -destroy -var-file=variables.tfvars -auto-approve
+
+  Update-Inventory:
+    runs-on: ubuntu-latest
+    needs: Destroy-Infrastructure
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            python3 \
+            python3-pip \
+            curl \
+            unzip
+
+      - name: Install Ansible and Minio client
+        run: pip3 install ansible minio
+
+      - name: Verify installations
+        run: ansible --version
+
+      - name: Update Ansible's inventory file
+        working-directory: ./utils/ansible
+        run: python3 update_inventory.py ${{ github.event.inputs.enviroment }} ${{ secrets.MINIO_ACCESS_KEY }} ${{ secrets.MINIO_SECRET_KEY }}

@@ -7,6 +7,10 @@ on:
         description: 'Choose enviroment from terraform/<enviroment>'
         required: true
         default: 'staging'
+      version:
+        description: 'Choose version x.y (major.minor). For patches use Upgrade Kubernetes Cluster Pipeline'
+        required: true
+        default: '1.29'
 
 jobs:
   Configure-Cluster:
@@ -31,9 +35,9 @@ jobs:
       - name: Verify installations
         run: ansible --version
 
-      - name: Update Ansible's inventory file
+      - name: Fetch Ansible's inventory file
         working-directory: ./utils/ansible
-        run: python3 update_inventory.py ${{ github.event.inputs.enviroment }} ${{ secrets.MINIO_ACCESS_KEY }} ${{ secrets.MINIO_SECRET_KEY }}
+        run: python3 fetch_inventory.py ${{ github.event.inputs.enviroment }} ${{ secrets.MINIO_ACCESS_KEY }} ${{ secrets.MINIO_SECRET_KEY }}
 
       - name: Configure machine's SSH_KEY
         env:
@@ -43,13 +47,14 @@ jobs:
           echo "$PRIVATE_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
 
-      - name: Share Ansible master-node IP for tasks
+      - name: Share Ansible master-node IP for tasks and configure version
         working-directory: ./ansible
         run: |
           master_ip=$(awk '/master-node/{getline; print $2}' ../utils/ansible/hosts.yml)
           sed -i "s/MASTER_NODE_IP/$master_ip/g" roles/common/tasks/main.yaml
           sed -i "s/MASTER_NODE_IP/$master_ip/g" roles/common/tasks/master.yaml
           sed -i "s/MASTER_NODE_IP/$master_ip/g" roles/nfs/tasks/main.yaml
+          sed -i "s/__KUBERNETES_MAJOR_MINOR_VERSION__/${{ github.event.inputs.version }}/g" roles/common/tasks/kube-dependencies.yaml
 
       - name: Run Ansible-scripts on targeted instances
         working-directory: ./ansible
@@ -67,7 +72,7 @@ jobs:
         working-directory: ./terraform/${{ github.event.inputs.enviroment }}
         run: |
           sed -i 's/"ansible-target" : "true"//g' hcloud.tf
-          awk '/ignore_changes/,/\]/{next} 1' hcloud.tf > temp && mv temp hcloud.tf
+          awk '/ignore_changes/ && /labels,/ {sub(/,labels,/,"")} 1' hcloud.tf > temp && mv temp hcloud.tf
 
       - name: Install Terraform
         run: |

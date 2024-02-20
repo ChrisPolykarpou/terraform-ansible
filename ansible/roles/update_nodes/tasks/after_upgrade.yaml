@@ -1,0 +1,10 @@
+- name: Upgrade kubelet
+  shell: |
+    apt-mark unhold kubelet kubectl && \
+    apt-get update && apt-get install -y kubelet='__KUBERNETES_MAJOR_MINOR_PATCH_VERSION__-1.1' kubectl='__KUBERNETES_MAJOR_MINOR_PATCH_VERSION__-1.1' && \
+    apt-mark hold kubelet kubectl
+
+- name: Restart Kubelet
+  shell: |
+    systemctl daemon-reload
+    systemctl restart kubelet
