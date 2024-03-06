@@ -1,0 +1,20 @@
+- name: Get old version raw
+  shell: cat /etc/apt/sources.list.d/kubernetes.list | sed -n 's/.*\/v\([0-9.]*\)\/.*/\1/p'
+  register: old_version_raw
+
+- name: Get version
+  set_fact:
+    old_version: "{{ old_version_raw.stdout }}"
+
+- name: Change K8s repository
+  command: sed -i 's/{{ old_version }}/__KUBERNETES_MAJOR_MINOR_VERSION__/g' /etc/apt/sources.list.d/kubernetes.list
+
+- name: update apt
+  command: apt update
+
+- name: Prepare Node for Upgrade
+  shell: |
+    apt-mark unhold kubeadm && \
+    apt-get update && apt-get install -y kubeadm=__KUBERNETES_MAJOR_MINOR_PATCH_VERSION__-1.1 && \
+    apt-mark hold kubeadm
+
