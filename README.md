@@ -5,7 +5,7 @@ A way of using terraform and ansible together in a fully automated IaC way using
 - Machines: Ubuntu 22.04
 - CNI: Cilium
 - CSI: Hcloud CSI controller
-- CCM: Hcloud controller manager (Used to provision Hcloud-load-balancers)
+- CCM: Hcloud controller manager (Used to provision Hcloud-load-balancers, Check nginx-values.yaml)
 
 [Tfstate](https://developer.hashicorp.com/terraform/language/state) file for each environment is stored in self-hosted minio-s3 storage. 
 > It is recommended to use a [lock](https://developer.hashicorp.com/terraform/language/state/locking) for your state!
