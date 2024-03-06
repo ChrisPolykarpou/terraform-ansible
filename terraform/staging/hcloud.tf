@@ -22,7 +22,7 @@ resource "hcloud_network" "privNet" {
   name     = "production-net"
   ip_range = "10.98.0.0/20"
   labels = {
-    "enviroment" : "production"
+    "enviroment" : "staging"
   }
 }
 resource "hcloud_network_subnet" "kubernetes" {
@@ -38,7 +38,7 @@ resource "hcloud_server" "master" {
   name        = "master-node"
   image       = "ubuntu-22.04"
   labels = {
-    "enviroment" : "production"
+    "enviroment" : "staging"
     "ansible-target" : "true"
   }
   server_type = "cpx21"
@@ -70,7 +70,7 @@ resource "hcloud_server" "worker" {
   name        = "worker-node-${count.index + 1}"
   image       = "ubuntu-22.04"
   labels = {
-    "enviroment" : "production"
+    "enviroment" : "staging"
     "ansible-target" : "true"
   }
   
@@ -92,46 +92,4 @@ resource "hcloud_server" "worker" {
       labels
     ]
   }
-}
-
-# Application Load-balancer
-resource "hcloud_load_balancer" "load_balancer" {
-  name               = "dealerlb"
-  load_balancer_type = "lb11"
-  location           = "hel1"
-  delete_protection  = "true"
-
-  lifecycle {
-    prevent_destroy = true
-  }
-}
-resource "hcloud_load_balancer_network" "srvnetwork" {
-  load_balancer_id = hcloud_load_balancer.load_balancer.id
-  network_id       = hcloud_network.privNet.id
-}
-resource "hcloud_load_balancer_service" "lb_service" {
-  load_balancer_id = hcloud_load_balancer.load_balancer.id
-  protocol         = "tcp"
-  listen_port      = "80"
-  destination_port = "32080"
-
-  lifecycle {
-    prevent_destroy = true
-  }
-}
-resource "hcloud_load_balancer_service" "lb_service2" {
-  load_balancer_id = hcloud_load_balancer.load_balancer.id
-  protocol         = "tcp"
-  listen_port      = "443"
-  destination_port = "32443"
-
-  lifecycle {
-    prevent_destroy = true
-  }
-}
-resource "hcloud_load_balancer_target" "load_balancer_target_worker" {
-  count            = var.worker_count
-  type             = "server"
-  load_balancer_id = hcloud_load_balancer.load_balancer.id
-  server_id        = hcloud_server.worker[count.index].id
 }
